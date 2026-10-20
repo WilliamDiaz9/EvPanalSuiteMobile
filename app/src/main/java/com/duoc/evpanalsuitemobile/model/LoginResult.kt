@@ -1,13 +1,6 @@
 package com.duoc.evpanalsuitemobile.model
 
-internal open class LoginResult {
-    var `object`: data? = null
-
-    constructor()
-
-    internal inner class success
-    constructor()
-
-    internal inner class Error
-    constructor()
+sealed class LoginResult {
+    data class Success(val usuario: String) : LoginResult()
+    data class Error(val mensaje: String) : LoginResult()
 }
