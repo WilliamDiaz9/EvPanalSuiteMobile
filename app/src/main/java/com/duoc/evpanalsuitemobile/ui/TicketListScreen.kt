@@ -51,6 +51,7 @@ fun TicketListScreen(
     onTicketClick: (Int) -> Unit,
     onCreateClick: () -> Unit,
     onDashboardClick: () -> Unit,
+    onProvidersClick: () -> Unit,
     onUserSelected: (User) -> Unit
 ) {
     // Estado propio de esta pantalla: filtro por estado
@@ -113,6 +114,7 @@ fun TicketListScreen(
                 if (user.role.canViewDashboard()) {
                     OutlinedButton(onClick = onDashboardClick) { Text("Panel") }
                 }
+                OutlinedButton(onClick = onProvidersClick) { Text("Servicios") }
             }
 
             Row(
@@ -203,6 +205,7 @@ fun TicketListScreenPreview() {
         onTicketClick = {},
         onCreateClick = {},
         onDashboardClick = {},
+        onProvidersClick = {},
         onUserSelected = {}
     )
 }

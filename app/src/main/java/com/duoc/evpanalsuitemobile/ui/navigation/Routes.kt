@@ -7,6 +7,7 @@ object Routes {
     const val TICKET_DETAIL = "ticketDetail/{ticketId}"
     const val CREATE_TICKET = "createTicket"
     const val SUPERVISOR = "supervisor"
+    const val PROVIDERS = "providers"
 
     fun ticketDetail(ticketId: Int) = "ticketDetail/$ticketId"
 }

@@ -21,6 +21,7 @@ import com.duoc.evpanalsuitemobile.model.canViewDashboard
 import com.duoc.evpanalsuitemobile.model.visibleTickets
 import com.duoc.evpanalsuitemobile.ui.AccessDeniedScreen
 import com.duoc.evpanalsuitemobile.ui.CreateTicketScreen
+import com.duoc.evpanalsuitemobile.ui.ProviderStatusScreen
 import com.duoc.evpanalsuitemobile.ui.SplashScreen
 import com.duoc.evpanalsuitemobile.ui.SupervisorScreen
 import com.duoc.evpanalsuitemobile.ui.TicketDetailScreen
@@ -79,6 +80,7 @@ fun AppNavHost(
                 onTicketClick = { ticketId -> navController.navigate(Routes.ticketDetail(ticketId)) },
                 onCreateClick = { navController.navigate(Routes.CREATE_TICKET) },
                 onDashboardClick = { navController.navigate(Routes.SUPERVISOR) },
+                onProvidersClick = { navController.navigate(Routes.PROVIDERS) },
                 onUserSelected = { authViewModel.selectUser(it) }
             )
         }
@@ -94,6 +96,10 @@ fun AppNavHost(
                 ticketViewModel = ticketViewModel,
                 onBack = { navController.popBackStack() }
             )
+        }
+
+        composable(Routes.PROVIDERS) {
+            ProviderStatusScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Routes.CREATE_TICKET) {
