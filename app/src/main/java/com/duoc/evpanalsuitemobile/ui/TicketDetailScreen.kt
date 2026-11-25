@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,6 +38,8 @@ import com.duoc.evpanalsuitemobile.model.TicketStatus
 import com.duoc.evpanalsuitemobile.model.User
 import com.duoc.evpanalsuitemobile.model.canAssign
 import com.duoc.evpanalsuitemobile.model.canChangeStatus
+import com.duoc.evpanalsuitemobile.model.canDeleteComment
+import com.duoc.evpanalsuitemobile.model.canDeleteTicket
 import com.duoc.evpanalsuitemobile.model.canView
 import com.duoc.evpanalsuitemobile.util.simulatedLocation
 import com.duoc.evpanalsuitemobile.viewmodel.TicketViewModel
@@ -49,16 +53,20 @@ fun TicketDetailScreen(
     onBack: () -> Unit
 ) {
     val tickets by ticketViewModel.tickets.collectAsState()
+    val users by ticketViewModel.users.collectAsState()
+    val resolvers by ticketViewModel.resolvers.collectAsState()
     val ticket = tickets.firstOrNull { it.id == ticketId }
 
     TicketDetailContent(
         ticket = ticket,
         user = user,
-        resolvers = ticketViewModel.resolvers,
-        userName = { id -> ticketViewModel.userName(id) },
+        resolvers = resolvers,
+        userName = { id -> users.firstOrNull { it.id == id }?.fullName ?: "Sin asignar" },
         onStatusChange = { status -> ticketViewModel.updateStatus(ticketId, status, user) },
         onAssign = { resolver -> ticketViewModel.assign(ticketId, resolver, user) },
         onAddComment = { text -> ticketViewModel.addComment(ticketId, text, user) },
+        onDeleteComment = { commentId -> ticketViewModel.deleteComment(ticketId, commentId, user) },
+        onDeleteTicket = { ticketViewModel.deleteTicket(ticketId, user) { onBack() } },
         onBack = onBack
     )
 }
@@ -74,9 +82,12 @@ fun TicketDetailContent(
     onStatusChange: (TicketStatus) -> Unit,
     onAssign: (User) -> Unit,
     onAddComment: (String) -> Unit,
+    onDeleteComment: (Int) -> Unit,
+    onDeleteTicket: () -> Unit,
     onBack: () -> Unit
 ) {
     // Estado propio de esta pantalla
+    var showDeleteDialog by remember { mutableStateOf(false) }
     var commentText by remember { mutableStateOf("") }
     var commentError by remember { mutableStateOf<String?>(null) }
     var showHistory by remember { mutableStateOf(false) }
@@ -178,6 +189,11 @@ fun TicketDetailContent(
                                 style = MaterialTheme.typography.bodySmall
                             )
                             Text(comment.text)
+                            if (user.canDeleteComment(comment)) {
+                                TextButton(onClick = { onDeleteComment(comment.id) }) {
+                                    Text("Eliminar comentario")
+                                }
+                            }
                         }
                     }
                 }
@@ -205,6 +221,35 @@ fun TicketDetailContent(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Agregar comentario")
+                }
+
+                if (user.role.canDeleteTicket()) {
+                    HorizontalDivider()
+                    OutlinedButton(
+                        onClick = { showDeleteDialog = true },
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Eliminar ticket")
+                    }
+                }
+                if (showDeleteDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showDeleteDialog = false },
+                        title = { Text("Eliminar ticket") },
+                        text = { Text("Se eliminará el ticket #${ticket.id} con sus comentarios e historial. No se puede deshacer.") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                showDeleteDialog = false
+                                onDeleteTicket()
+                            }) { Text("Eliminar") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDeleteDialog = false }) { Text("Cancelar") }
+                        }
+                    )
                 }
 
                 HorizontalDivider()

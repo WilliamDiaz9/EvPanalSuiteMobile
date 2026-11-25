@@ -1,9 +1,16 @@
 ﻿package com.duoc.evpanalsuitemobile.ui.navigation
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -12,7 +19,6 @@ import androidx.navigation.navArgument
 import com.duoc.evpanalsuitemobile.model.canCreateTicket
 import com.duoc.evpanalsuitemobile.model.canViewDashboard
 import com.duoc.evpanalsuitemobile.model.visibleTickets
-import com.duoc.evpanalsuitemobile.repository.SampleData
 import com.duoc.evpanalsuitemobile.ui.AccessDeniedScreen
 import com.duoc.evpanalsuitemobile.ui.CreateTicketScreen
 import com.duoc.evpanalsuitemobile.ui.SplashScreen
@@ -32,8 +38,21 @@ fun AppNavHost(
     createTicketViewModel: CreateTicketViewModel
 ) {
     val user by authViewModel.currentUser.collectAsState()
+    val users by authViewModel.users.collectAsState()
     val tickets by ticketViewModel.tickets.collectAsState()
+    val resolvers by ticketViewModel.resolvers.collectAsState()
+    val message by ticketViewModel.message.collectAsState()
 
+    // Muestra los errores del servidor en un aviso abajo
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(message) {
+        message?.let {
+            snackbarHostState.showSnackbar(it)
+            ticketViewModel.clearMessage()
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
     NavHost(
         navController = navController,
         startDestination = Routes.SPLASH
@@ -50,11 +69,13 @@ fun AppNavHost(
         }
 
         composable(Routes.TICKETS) {
+            // Cada vez que se abre la lista, pide los datos al servidor
+            LaunchedEffect(Unit) { ticketViewModel.refresh() }
             TicketListScreen(
                 user = user,
-                users = SampleData.users,
+                users = users,
                 tickets = user.visibleTickets(tickets),
-                userName = { id -> ticketViewModel.userName(id) },
+                userName = { id -> users.firstOrNull { it.id == id }?.fullName ?: "Sin asignar" },
                 onTicketClick = { ticketId -> navController.navigate(Routes.ticketDetail(ticketId)) },
                 onCreateClick = { navController.navigate(Routes.CREATE_TICKET) },
                 onDashboardClick = { navController.navigate(Routes.SUPERVISOR) },
@@ -99,13 +120,19 @@ fun AppNavHost(
             if (user.role.canViewDashboard()) {
                 SupervisorScreen(
                     tickets = tickets,
-                    resolvers = ticketViewModel.resolvers,
+                    resolvers = resolvers,
                     onBack = { navController.popBackStack() }
                 )
             } else {
                 AccessDeniedScreen(onBack = { navController.popBackStack() })
             }
         }
+    }
+
+    SnackbarHost(
+        hostState = snackbarHostState,
+        modifier = Modifier.align(Alignment.BottomCenter)
+    )
     }
 }
 

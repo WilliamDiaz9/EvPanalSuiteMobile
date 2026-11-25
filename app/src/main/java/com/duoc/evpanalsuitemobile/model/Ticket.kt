@@ -3,7 +3,9 @@
 data class TicketComment(
     val authorId: Int,
     val text: String,
-    val createdAt: String
+    val createdAt: String,
+    // Id que entrega el servidor (sirve para eliminar el comentario)
+    val id: Int = 0
 )
 
 data class TicketHistoryEntry(

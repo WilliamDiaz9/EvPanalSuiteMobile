@@ -143,11 +143,16 @@ fun CreateTicketContent(
                 }
             )
 
+            state.submitError?.let {
+                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
+
             Button(
                 onClick = onSubmit,
+                enabled = !state.isSubmitting,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Crear ticket")
+                Text(if (state.isSubmitting) "Creando..." else "Crear ticket")
             }
         }
     }

@@ -1,28 +1,33 @@
-﻿package com.duoc.evpanalsuitemobile.repository
+package com.duoc.evpanalsuitemobile.repository
 
+import com.duoc.evpanalsuitemobile.data.remote.LoginRequest
+import com.duoc.evpanalsuitemobile.data.remote.UsersApiService
+import com.duoc.evpanalsuitemobile.data.remote.toUserMessage
 import com.duoc.evpanalsuitemobile.model.LoginResult
-import com.duoc.evpanalsuitemobile.model.Role
 import com.duoc.evpanalsuitemobile.model.User
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
-object AuthRepository {
+// Habla con el microservicio de usuarios
+class AuthRepository(private val api: UsersApiService) {
 
-    /** Simula la verificación contra un servidor: demora de red y resultado. */
-    suspend fun authenticate(username: String, password: String): LoginResult {
-        delay(1000L)
-        val user = SampleData.users.firstOrNull {
-            it.username == username && it.password == password
-        }
-        return if (user != null) {
-            LoginResult.Success(user)
-        } else {
-            LoginResult.Error("Credenciales incorrectas")
-        }
+    private val _users = MutableStateFlow<List<User>>(emptyList())
+    val users: StateFlow<List<User>> = _users.asStateFlow()
+
+    // Trae la lista de usuarios desde el servidor
+    suspend fun loadUsers() {
+        _users.value = api.getUsers()
     }
 
-    fun resolvers(): List<User> = SampleData.users.filter { it.role == Role.RESOLVER }
-
-    fun userName(id: Int?): String =
-        SampleData.users.firstOrNull { it.id == id }?.fullName ?: "Sin asignar"
+    // Login contra el servidor (todavia no hay pantalla de login)
+    suspend fun authenticate(username: String, password: String): LoginResult =
+        try {
+            LoginResult.Success(api.login(LoginRequest(username, password)))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            LoginResult.Error(e.toUserMessage())
+        }
 }
-

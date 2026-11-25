@@ -1,13 +1,18 @@
-﻿package com.duoc.evpanalsuitemobile.viewmodel
+package com.duoc.evpanalsuitemobile.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.duoc.evpanalsuitemobile.data.remote.toUserMessage
+import com.duoc.evpanalsuitemobile.di.AppModule
 import com.duoc.evpanalsuitemobile.model.Priority
 import com.duoc.evpanalsuitemobile.model.User
 import com.duoc.evpanalsuitemobile.repository.TicketRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 data class CreateTicketUiState(
     val title: String = "",
@@ -18,10 +23,16 @@ data class CreateTicketUiState(
     val titleError: String? = null,
     val descriptionError: String? = null,
     val categoryError: String? = null,
-    val branchError: String? = null
+    val branchError: String? = null,
+    // true mientras se espera la respuesta del servidor
+    val isSubmitting: Boolean = false,
+    // error que devuelve el servidor al crear
+    val submitError: String? = null
 )
 
-class CreateTicketViewModel : ViewModel() {
+class CreateTicketViewModel(
+    private val repository: TicketRepository = AppModule.ticketRepository
+) : ViewModel() {
 
     val categories = listOf("Infraestructura", "Inventario", "Hardware", "Software", "Otro")
     val branches = listOf("Tienda Centro", "Tienda Sur", "Farmacia Norte", "Oficina central")
@@ -51,6 +62,7 @@ class CreateTicketViewModel : ViewModel() {
 
     fun submit(requester: User, onCreated: (Int) -> Unit) {
         val state = _uiState.value
+        if (state.isSubmitting) return
 
         val titleError = if (state.title.trim().length < 5) {
             "El título debe tener al menos 5 caracteres"
@@ -75,20 +87,28 @@ class CreateTicketViewModel : ViewModel() {
             return
         }
 
-        val newId = TicketRepository.create(
-            title = state.title.trim(),
-            description = state.description.trim(),
-            category = state.category,
-            priority = state.priority,
-            branch = state.branch,
-            requester = requester
-        )
-        _uiState.value = CreateTicketUiState()
-        onCreated(newId)
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSubmitting = true, submitError = null) }
+            try {
+                val created = repository.create(
+                    title = state.title.trim(),
+                    description = state.description.trim(),
+                    category = state.category,
+                    priority = state.priority,
+                    branch = state.branch,
+                    requester = requester
+                )
+                _uiState.value = CreateTicketUiState()
+                onCreated(created.id)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isSubmitting = false, submitError = e.toUserMessage()) }
+            }
+        }
     }
 
     fun reset() {
         _uiState.value = CreateTicketUiState()
     }
 }
-

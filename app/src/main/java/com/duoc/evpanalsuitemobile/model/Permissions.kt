@@ -16,6 +16,13 @@ fun Role.canViewDashboard(): Boolean =
 fun Role.canAssign(): Boolean =
     this == Role.SUPERVISOR || this == Role.ADMIN
 
+// Solo el ADMIN elimina tickets (igual que el microservicio)
+fun Role.canDeleteTicket(): Boolean = this == Role.ADMIN
+
+// ADMIN y SUPERVISOR eliminan cualquier comentario; los demas solo los suyos
+fun User.canDeleteComment(comment: TicketComment): Boolean =
+    role == Role.ADMIN || role == Role.SUPERVISOR || comment.authorId == id
+
 fun User.canView(ticket: Ticket): Boolean = when (role) {
     Role.REQUESTER -> ticket.requesterId == id
     Role.RESOLVER -> ticket.assigneeId == id || ticket.assigneeId == null

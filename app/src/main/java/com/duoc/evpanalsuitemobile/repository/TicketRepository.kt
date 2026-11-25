@@ -1,91 +1,71 @@
-﻿package com.duoc.evpanalsuitemobile.repository
+package com.duoc.evpanalsuitemobile.repository
 
+import com.duoc.evpanalsuitemobile.data.remote.AssignRequest
+import com.duoc.evpanalsuitemobile.data.remote.CommentRequest
+import com.duoc.evpanalsuitemobile.data.remote.CreateTicketRequest
+import com.duoc.evpanalsuitemobile.data.remote.StatusRequest
+import com.duoc.evpanalsuitemobile.data.remote.TicketsApiService
 import com.duoc.evpanalsuitemobile.model.Priority
 import com.duoc.evpanalsuitemobile.model.Ticket
-import com.duoc.evpanalsuitemobile.model.TicketComment
-import com.duoc.evpanalsuitemobile.model.TicketHistoryEntry
 import com.duoc.evpanalsuitemobile.model.TicketStatus
 import com.duoc.evpanalsuitemobile.model.User
-import com.duoc.evpanalsuitemobile.util.nowString
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import retrofit2.HttpException
 
-object TicketRepository {
+// Habla con el microservicio de tickets y guarda la lista actual en memoria
+class TicketRepository(private val api: TicketsApiService) {
 
-    private val _tickets = MutableStateFlow(SampleData.tickets)
+    private val _tickets = MutableStateFlow<List<Ticket>>(emptyList())
     val tickets: StateFlow<List<Ticket>> = _tickets.asStateFlow()
 
-    fun create(
+    // Lee todos los tickets del servidor
+    suspend fun refresh() {
+        _tickets.value = api.getTickets()
+    }
+
+    // Crea un ticket y lo devuelve con el id que le puso el servidor
+    suspend fun create(
         title: String,
         description: String,
         category: String,
         priority: Priority,
         branch: String,
         requester: User
-    ): Int {
-        val now = nowString()
-        val newId = (_tickets.value.maxOfOrNull { it.id } ?: 100) + 1
-        val ticket = Ticket(
-            id = newId,
-            title = title,
-            description = description,
-            flowType = "Soporte interno",
-            category = category,
-            priority = priority,
-            status = TicketStatus.OPEN,
-            createdAt = now,
-            updatedAt = now,
-            branch = branch,
-            requesterId = requester.id,
-            team = "Soporte TI",
-            assigneeId = null,
-            history = listOf(TicketHistoryEntry(requester.id, "Ticket creado", now))
+    ): Ticket {
+        val created = api.createTicket(
+            CreateTicketRequest(title, description, category, priority, branch, requester.id)
         )
-        _tickets.update { it + ticket }
-        return newId
+        _tickets.update { it + created }
+        return created
     }
 
-    fun updateStatus(ticketId: Int, status: TicketStatus, author: User) {
-        modify(ticketId) { ticket, now ->
-            ticket.copy(
-                status = status,
-                updatedAt = now,
-                history = ticket.history +
-                    TicketHistoryEntry(author.id, "Estado: ${status.label}", now)
-            )
-        }
+    suspend fun updateStatus(ticketId: Int, status: TicketStatus, author: User) {
+        replace(api.changeStatus(ticketId, StatusRequest(status, author.id)))
     }
 
-    fun assign(ticketId: Int, assignee: User, author: User) {
-        modify(ticketId) { ticket, now ->
-            ticket.copy(
-                assigneeId = assignee.id,
-                status = if (ticket.status == TicketStatus.OPEN) TicketStatus.IN_PROGRESS else ticket.status,
-                updatedAt = now,
-                history = ticket.history +
-                    TicketHistoryEntry(author.id, "Asignado a ${assignee.fullName}", now)
-            )
-        }
+    suspend fun assign(ticketId: Int, assignee: User, author: User) {
+        replace(api.assign(ticketId, AssignRequest(assignee.id, author.id)))
     }
 
-    fun addComment(ticketId: Int, text: String, author: User) {
-        modify(ticketId) { ticket, now ->
-            ticket.copy(
-                updatedAt = now,
-                comments = ticket.comments + TicketComment(author.id, text, now),
-                history = ticket.history +
-                    TicketHistoryEntry(author.id, "Comentario agregado", now)
-            )
-        }
+    suspend fun addComment(ticketId: Int, text: String, author: User) {
+        replace(api.addComment(ticketId, CommentRequest(text, author.id)))
     }
 
-    private fun modify(ticketId: Int, transform: (Ticket, String) -> Ticket) {
-        val now = nowString()
-        _tickets.update { list ->
-            list.map { if (it.id == ticketId) transform(it, now) else it }
-        }
+    suspend fun deleteComment(ticketId: Int, commentId: Int, user: User) {
+        replace(api.deleteComment(ticketId, commentId, user.id))
+    }
+
+    suspend fun deleteTicket(ticketId: Int, user: User) {
+        val response = api.deleteTicket(ticketId, user.id)
+        if (!response.isSuccessful) throw HttpException(response)
+        _tickets.update { list -> list.filter { it.id != ticketId } }
+    }
+
+    // Cambia en la lista el ticket que devolvio el servidor
+    private fun replace(updated: Ticket) {
+        _tickets.update { list -> list.map { if (it.id == updated.id) updated else it } }
     }
 }
-
