@@ -9,6 +9,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
+import com.duoc.evpanalsuitemobile.di.AppModule
 import com.duoc.evpanalsuitemobile.ui.navigation.AppNavHost
 import com.duoc.evpanalsuitemobile.ui.theme.PanalSuiteTheme
 import com.duoc.evpanalsuitemobile.viewmodel.AuthViewModel
@@ -18,6 +19,8 @@ import com.duoc.evpanalsuitemobile.viewmodel.TicketViewModel
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Prepara el almacenamiento local antes de crear los ViewModels
+        AppModule.init(applicationContext)
         setContent {
             PanalSuiteTheme {
                 Surface(
