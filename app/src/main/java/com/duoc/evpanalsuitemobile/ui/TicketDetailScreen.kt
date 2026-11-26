@@ -31,6 +31,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.duoc.evpanalsuitemobile.model.Ticket
@@ -41,6 +42,7 @@ import com.duoc.evpanalsuitemobile.model.canChangeStatus
 import com.duoc.evpanalsuitemobile.model.canDeleteComment
 import com.duoc.evpanalsuitemobile.model.canDeleteTicket
 import com.duoc.evpanalsuitemobile.model.canView
+import com.duoc.evpanalsuitemobile.util.showTicketNotification
 import com.duoc.evpanalsuitemobile.util.simulatedLocation
 import com.duoc.evpanalsuitemobile.viewmodel.TicketViewModel
 
@@ -52,6 +54,7 @@ fun TicketDetailScreen(
     ticketViewModel: TicketViewModel,
     onBack: () -> Unit
 ) {
+    val context = LocalContext.current
     val tickets by ticketViewModel.tickets.collectAsState()
     val users by ticketViewModel.users.collectAsState()
     val resolvers by ticketViewModel.resolvers.collectAsState()
@@ -62,7 +65,10 @@ fun TicketDetailScreen(
         user = user,
         resolvers = resolvers,
         userName = { id -> users.firstOrNull { it.id == id }?.fullName ?: "Sin asignar" },
-        onStatusChange = { status -> ticketViewModel.updateStatus(ticketId, status, user) },
+        onStatusChange = { status ->
+            ticketViewModel.updateStatus(ticketId, status, user)
+            showTicketNotification(context, "Ticket actualizado", "El ticket #$ticketId ahora está ${status.label}")
+        },
         onAssign = { resolver -> ticketViewModel.assign(ticketId, resolver, user) },
         onAddComment = { text -> ticketViewModel.addComment(ticketId, text, user) },
         onDeleteComment = { commentId -> ticketViewModel.deleteComment(ticketId, commentId, user) },
