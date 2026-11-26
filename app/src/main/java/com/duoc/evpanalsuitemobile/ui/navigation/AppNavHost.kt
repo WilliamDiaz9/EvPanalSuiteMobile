@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -26,6 +27,7 @@ import com.duoc.evpanalsuitemobile.ui.SplashScreen
 import com.duoc.evpanalsuitemobile.ui.SupervisorScreen
 import com.duoc.evpanalsuitemobile.ui.TicketDetailScreen
 import com.duoc.evpanalsuitemobile.ui.TicketListScreen
+import com.duoc.evpanalsuitemobile.util.showTicketNotification
 import com.duoc.evpanalsuitemobile.viewmodel.AuthViewModel
 import com.duoc.evpanalsuitemobile.viewmodel.CreateTicketViewModel
 import com.duoc.evpanalsuitemobile.viewmodel.TicketViewModel
@@ -38,6 +40,7 @@ fun AppNavHost(
     ticketViewModel: TicketViewModel,
     createTicketViewModel: CreateTicketViewModel
 ) {
+    val context = LocalContext.current
     val user by authViewModel.currentUser.collectAsState()
     val users by authViewModel.users.collectAsState()
     val tickets by ticketViewModel.tickets.collectAsState()
@@ -112,6 +115,7 @@ fun AppNavHost(
                         navController.popBackStack()
                     },
                     onCreated = { newId ->
+                        showTicketNotification(context, "Ticket creado", "Se creó el ticket #$newId")
                         navController.navigate(Routes.ticketDetail(newId)) {
                             popUpTo(Routes.TICKETS)
                         }
